@@ -27,3 +27,6 @@ Este é um aplicativo **auto executável**, compilado com **PyInstaller**, sem n
 
 
 ![Captura de Tela](https://github.com/eusouanderson/orange_editor/blob/main/screenshot.gif)
+
+
+[Download](https://github.com/eusouanderson/orange_editor/releases/)
