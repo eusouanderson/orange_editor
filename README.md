@@ -1,6 +1,6 @@
 # Orange Editor
 
-**Code Editor** é um editor de texto simples e funcional, criado com Orange Micro Framework. 
+**Orange Editor** é um editor de texto simples e funcional, criado com Orange Micro Framework. 
 
 ## Funcionalidades
 
