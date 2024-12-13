@@ -8,17 +8,17 @@
   - **Atalho**: **Ctrl + N**
   
 - **Abrir Arquivo**: Abre um arquivo de texto existente.
-- - **Atalho**: **Ctrl + O**
+  - **Atalho**: **Ctrl + O**
 
 - **Salvar Arquivo**: Salva o conteúdo atual do editor em um arquivo.  
   - **Atalho**: **Ctrl + S**
   
 - **Alterar Cor do Texto**: Permite personalizar a cor do texto do editor.
--  - **Atalho**: **Ctrl + F**
+  - **Atalho**: **Ctrl + F**
 
 - **Alternar Transparência**: Habilita ou desabilita a transparência da janela.
- - **Atalho**: **Ctrl + T**
- - 
+  -**Atalho**: **Ctrl + T**
+ 
 - **Ajustar Transparência**: Controla a transparência da janela do editor através de um controle deslizante.
 
 ---
