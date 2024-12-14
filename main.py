@@ -2,7 +2,10 @@ import sys
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont, QIcon
 from os import environ, path
-from PySide6.QtGui import QShortcut, QKeySequence
+from PySide6.QtGui import QShortcut, QKeySequence, QTextCursor
+from PyPDF2 import PdfReader
+from docx import Document
+import os
 
 from PySide6.QtWidgets import (
     QApplication,
@@ -17,6 +20,8 @@ from PySide6.QtWidgets import (
     QColorDialog,
     QFontDialog,
     QSlider,
+    QInputDialog,
+    QMessageBox
     
 )
 
@@ -44,7 +49,7 @@ class CodeEditor(QMainWindow):
         self.setWindowTitle("Orange Editor")
         self.setGeometry(100, 100, 800, 600)
 
-        self.font = QFont("Consolas", 12)
+        self.font = QFont("Consolas", 10)
         self.setFont(self.font)
 
         self.init_ui()
@@ -57,6 +62,7 @@ class CodeEditor(QMainWindow):
         self.editor.setFont(self.font)
         self.editor.setStyleSheet("background-color: #1E1E1E; color: #D4D4D4;")
         self.editor.setTabStopDistance(4 * self.font.pointSizeF())
+        self.editor.verticalScrollBar().valueChanged.connect(self.sync_line_number_scroll)
 
         self.line_number_area = QLabel(self)
         self.line_number_area.setStyleSheet("background-color: #2E2E2E; color: #888888;")
@@ -108,7 +114,6 @@ class CodeEditor(QMainWindow):
         transparency_layout = QVBoxLayout()
         transparency_layout.addWidget(QLabel("Ajustar Transparência:"))
         transparency_layout.addWidget(self.transparency_slider)
-
         
         main_layout = QVBoxLayout()
         main_layout.addLayout(buttons_layout)
@@ -122,6 +127,12 @@ class CodeEditor(QMainWindow):
         self.update_line_numbers()
 
         self.transparent = False
+
+
+    def sync_line_number_scroll(self, value):
+        """Sincroniza a rolagem da área de números de linha com a rolagem do editor."""
+        self.line_number_area.move(1, -value) 
+
     def create_shortcuts(self):
         """Cria atalhos para os botões.""" 
         self.open_shortcut = QShortcut(QKeySequence("Ctrl+O"), self)
@@ -139,15 +150,42 @@ class CodeEditor(QMainWindow):
         self.transparent_shortcut = QShortcut(QKeySequence("Ctrl+T"), self)
         self.transparent_shortcut.activated.connect(self.toggle_transparency)
 
+        self.goto_shortcut = QShortcut(QKeySequence("Ctrl+G"), self)
+        self.goto_shortcut.activated.connect(self.goto_line)
+
+    def goto_line(self):
+        """Abre um diálogo para o usuário inserir o número da linha."""
+        line, ok = QInputDialog.getInt(self, "Ir para a Linha", "Digite o número da linha:", 1, 1, self.editor.blockCount(), 1)
+        if ok:
+            self.jump_to_line(line)
+
+    def jump_to_line(self, line_number):
+        """Move o cursor para o número da linha especificado e seleciona a linha inteira."""
+        block = self.editor.document().findBlockByNumber(line_number - 1)
+        cursor = self.editor.textCursor()
+        cursor.setPosition(block.position())
+        
+        cursor.movePosition(QTextCursor.EndOfBlock, QTextCursor.KeepAnchor)
+        
+        self.editor.setTextCursor(cursor)
 
     def update_line_numbers(self):
-        """Atualiza os números de linha."""
+        """Atualiza os números de linha e garante que a largura da área seja suficiente."""
         lines = self.editor.blockCount()
         text = "\n".join(str(i + 1) for i in range(lines))
+        
+        
+        max_line_number = len(str(lines))  
+        line_number_width = self.font.pointSizeF() * max_line_number * 1.2 
+
+        self.line_number_area.setFixedWidth(line_number_width)
+
+        self.line_number_area.setFont(self.font)
         self.line_number_area.setText(text)
+        self.line_number_area.setAlignment(Qt.AlignRight | Qt.AlignTop) 
 
     def update_line_area(self, rect, dy):
-        """Sincroniza os números de linha com o editor."""
+        """Sincroniza os números de linha com o editor.""" 
         if dy:
             self.line_number_area.scroll(0, dy)
         else:
@@ -158,12 +196,51 @@ class CodeEditor(QMainWindow):
         self.editor.setPlainText("")
 
     def open_file(self):
-        """Abre um arquivo e carrega o conteúdo no editor.""" 
+        """Abre um arquivo e carrega o conteúdo no editor."""
         file_path, _ = QFileDialog.getOpenFileName(self, "Abrir Arquivo", "", "Todos os Arquivos (*.*)")
         if file_path:
-            with open(file_path, "r", encoding="utf-8") as file:
-                content = file.read()
-                self.editor.setPlainText(content)
+            ext = os.path.splitext(file_path)[-1].lower()  
+            try:
+                if ext in [".txt", ".gitignore", ".log", ".cfg"]:  
+                    with open(file_path, "r", encoding="utf-8") as file:
+                        content = file.read()
+                        self.editor.setPlainText(content)
+                
+                elif ext == ".docx":  
+                    from docx import Document
+                    doc = Document(file_path)
+                    content = "\n".join([p.text for p in doc.paragraphs])
+                    self.editor.setPlainText(content)
+                
+                elif ext == ".xlsx":  
+                    from openpyxl import load_workbook
+                    workbook = load_workbook(file_path)
+                    sheet = workbook.active
+                    rows = [[str(cell.value) for cell in row] for row in sheet.iter_rows()]
+                    content = "\n".join(["\t".join(row) for row in rows])
+                    self.editor.setPlainText(content)
+                
+                elif ext == ".pdf":  
+                    from PyPDF2 import PdfReader
+                    reader = PdfReader(file_path)
+                    content = "\n".join([page.extract_text() for page in reader.pages])
+                    self.editor.setPlainText(content)
+                
+                else:  
+                    with open(file_path, "rb") as file:
+                        binary_data = file.read()
+                    try:
+                        
+                        decoded_text = binary_data.decode("utf-8")
+                        self.editor.setPlainText(f"Arquivo decodificado como texto UTF-8:\n\n{decoded_text}")
+                    except UnicodeDecodeError:
+                        
+                        hex_view = binary_data.hex()
+                        self.editor.setPlainText(f"Arquivo binário detectado. Exibindo em hexadecimal:\n\n{hex_view}")
+            
+            except Exception as e:
+                QMessageBox.critical(self, "Erro", f"Não foi possível abrir o arquivo:\n{e}")
+            
 
     def save_file(self):
         """Salva o conteúdo do editor em um arquivo.""" 
