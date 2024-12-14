@@ -46,6 +46,13 @@ Veja o Orange Editor em ação:
 
 ---
 
+## 📥 Download
+
+Baixe agora a última versão do **Orange Editor**:  
+👉 [Página de Releases](https://github.com/eusouanderson/orange_editor/releases/)
+
+---
+
 ## 🛠️ Tecnologias Utilizadas
 
 - **Orange Micro Framework**: Framework base para desenvolvimento.
