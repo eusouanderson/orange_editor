@@ -26,4 +26,4 @@
 Este é um aplicativo **auto executável**, compilado com **PyInstaller**, sem necessidade de instalação adicional. Basta abrir o arquivo executável para começar a usar.
 
 
-![Captura de Tela](https://github.com/eusouanderson/orange_calculator/blob/main/screenshot.gif)
+![Captura de Tela](https://raw.githubusercontent.com/eusouanderson/orange_calculator/main/screenshot.gif)
