@@ -58,19 +58,20 @@ class CodeEditor(QMainWindow):
         """Inicializa os componentes da interface gráfica."""
         self.setStyleSheet("background-color: #1E1E1E; color: #D4D4D4;")
         self.create_shortcuts()
+        
         self.editor = QPlainTextEdit(self)
         self.editor.setFont(self.font)
         self.editor.setStyleSheet("background-color: #1E1E1E; color: #D4D4D4;")
         self.editor.setTabStopDistance(4 * self.font.pointSizeF())
         self.editor.verticalScrollBar().valueChanged.connect(self.sync_line_number_scroll)
+        self.editor.textChanged.connect(self.update_line_numbers)
 
-        self.line_number_area = QLabel(self)
+        self.line_number_area = QWidget(self)
         self.line_number_area.setStyleSheet("background-color: #2E2E2E; color: #888888;")
-        self.line_number_area.setAlignment(Qt.AlignTop | Qt.AlignRight)
-        self.line_number_area.setFont(QFont("Consolas", 10))
-
-        self.editor.blockCountChanged.connect(self.update_line_numbers)
-        self.editor.updateRequest.connect(self.update_line_area)
+        self.line_number_layout = QVBoxLayout(self.line_number_area)
+        self.line_number_layout.setContentsMargins(0, 0, 0, 0)
+        self.line_number_layout.setAlignment(Qt.AlignTop)
+        self.line_number_labels = []
 
         self.open_button = QPushButton("Abrir", self)
         self.open_button.setStyleSheet("background-color: #333333; color: #FFFFFF;")
@@ -124,9 +125,16 @@ class CodeEditor(QMainWindow):
         central_widget.setLayout(main_layout)
         self.setCentralWidget(central_widget)
 
+        self.transparent = False
         self.update_line_numbers()
 
-        self.transparent = False
+    def update_line_numbers(self):
+        """Atualiza a exibição de números de linha."""
+        # Limpa os números existentes
+        for label in self.line_number_labels:
+            self.line_number_layout.removeWidget(label)
+            label.deleteLater()
+        self.line_number_labels = []
 
 
     def sync_line_number_scroll(self, value):
@@ -169,20 +177,7 @@ class CodeEditor(QMainWindow):
         
         self.editor.setTextCursor(cursor)
 
-    def update_line_numbers(self):
-        """Atualiza os números de linha e garante que a largura da área seja suficiente."""
-        lines = self.editor.blockCount()
-        text = "\n".join(str(i + 1) for i in range(lines))
-        
-        
-        max_line_number = len(str(lines))  
-        line_number_width = self.font.pointSizeF() * max_line_number * 1.2 
-
-        self.line_number_area.setFixedWidth(line_number_width)
-
-        self.line_number_area.setFont(self.font)
-        self.line_number_area.setText(text)
-        self.line_number_area.setAlignment(Qt.AlignRight | Qt.AlignTop) 
+    
 
     def update_line_area(self, rect, dy):
         """Sincroniza os números de linha com o editor.""" 
@@ -199,19 +194,19 @@ class CodeEditor(QMainWindow):
         """Abre um arquivo e carrega o conteúdo no editor."""
         file_path, _ = QFileDialog.getOpenFileName(self, "Abrir Arquivo", "", "Todos os Arquivos (*.*)")
         if file_path:
-            ext = os.path.splitext(file_path)[-1].lower()  
+            ext = os.path.splitext(file_path)[-1].lower()
             try:
                 if ext in [".txt", ".gitignore", ".log", ".cfg"]:  
                     with open(file_path, "r", encoding="utf-8") as file:
                         content = file.read()
                         self.editor.setPlainText(content)
-                
+
                 elif ext == ".docx":  
                     from docx import Document
                     doc = Document(file_path)
                     content = "\n".join([p.text for p in doc.paragraphs])
                     self.editor.setPlainText(content)
-                
+
                 elif ext == ".xlsx":  
                     from openpyxl import load_workbook
                     workbook = load_workbook(file_path)
@@ -219,27 +214,44 @@ class CodeEditor(QMainWindow):
                     rows = [[str(cell.value) for cell in row] for row in sheet.iter_rows()]
                     content = "\n".join(["\t".join(row) for row in rows])
                     self.editor.setPlainText(content)
-                
+
                 elif ext == ".pdf":  
                     from PyPDF2 import PdfReader
                     reader = PdfReader(file_path)
                     content = "\n".join([page.extract_text() for page in reader.pages])
                     self.editor.setPlainText(content)
-                
+
                 else:  
                     with open(file_path, "rb") as file:
                         binary_data = file.read()
                     try:
-                        
                         decoded_text = binary_data.decode("utf-8")
-                        self.editor.setPlainText(f"Arquivo decodificado como texto UTF-8:\n\n{decoded_text}")
+                        formatted_text = self.format_content(decoded_text, ext)
+                        self.editor.setPlainText(formatted_text)
                     except UnicodeDecodeError:
-                        
                         hex_view = binary_data.hex()
                         self.editor.setPlainText(f"Arquivo binário detectado. Exibindo em hexadecimal:\n\n{hex_view}")
-            
+
             except Exception as e:
                 QMessageBox.critical(self, "Erro", f"Não foi possível abrir o arquivo:\n{e}")
+
+    def format_content(self, content, ext):
+        """Aplica a formatação apropriada ao conteúdo com base na extensão."""
+        if ext == ".html":
+            from bs4 import BeautifulSoup
+            soup = BeautifulSoup(content, "html.parser")
+            return soup.prettify()
+        
+        elif ext == ".json":
+            import json
+            try:
+                parsed = json.loads(content)
+                return json.dumps(parsed, indent=4)
+            except json.JSONDecodeError:
+                return content  # Retorna o texto original se não puder ser formatado
+
+        # Adicionar mais casos de formatação, se necessário
+        return content
             
 
     def save_file(self):
